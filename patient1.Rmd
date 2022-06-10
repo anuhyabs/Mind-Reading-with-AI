@@ -1,0 +1,196 @@
+---
+title: "Patient1"
+author: "Anuhya B S"
+date: '2022-06-08'
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#Importing libraries
+library('R.matlab')
+library(caTools)
+library(e1071)
+library(class)
+library(tree)
+library(randomForest)
+```
+
+```{r}
+#Loading Data
+p1 <- readMat("data-science-P1.mat")
+
+info <- as.data.frame(p1[2])
+info <- t(info)
+info <- as.data.frame(info)
+lab.grp <-as.data.frame(matrix(nrow=0,ncol=1))
+lab.wrd <-as.data.frame(matrix(nrow=0,ncol=1))
+for (i in 1:360){
+  lab.grp <-  rbind(lab.grp,info$cond[[i]])
+  lab.wrd <-  rbind(lab.wrd,info$word[[i]])
+}
+
+p1.data <- p1$data
+voxels <-as.data.frame(matrix(nrow=0,ncol=21764))
+for (i in 1:360){
+  voxels <-  rbind(voxels,p1.data[[i]][[1]])
+}
+
+```
+
+```{r}
+# Principal Component Analysis for Feature Reduction
+pr.out <- prcomp(voxels)
+cumsum((pr.out$sdev^2)/sum(pr.out$sdev^2))
+pcs <- as.data.frame(pr.out$x[,1:300])
+pcs$grp <- lab.grp$V1
+#pcs$wrd <- lab.wrd$V1
+```
+
+```{r}
+# Splitting data into training and test data
+set.seed(100) 
+#sample <- sample(1:nrow(pcs), 300)
+pcs.train <- pcs[1:300,]
+pcs.test <- pcs[301:360,]
+#pcs.train <- subset(pcs, sample == TRUE)
+#pcs.test  <- subset(pcs, sample == FALSE)
+pcs.train.x <- subset(pcs.train, select = -c(grp))
+pcs.train.labs <- pcs.train$grp
+pcs.test.x <- subset(pcs.test, select = -c(grp))
+pcs.test.labs <- pcs.test$grp
+```
+
+```{r}
+# Classification Algorithms
+
+# Naive Bayes Classifier
+
+nb.fit <- naiveBayes(grp ~ . , data = pcs.train)
+nb.class <- predict(nb.fit,pcs.test.x)
+nb.class
+
+confusion_mat.nb = as.matrix(table(Actual_Values = pcs.test.labs, Predicted_Values = nb.class)) 
+print(confusion_mat.nb)
+
+print(mean(nb.class == pcs.test$grp))
+```
+```{r}
+# KNN
+
+knn.pred <- knn(pcs.train.x, pcs.test.x, pcs.train.labs, k=5)
+
+confusion_mat.knn = as.matrix(table(pcs.test.labs, knn.pred)) 
+print(confusion_mat.knn)
+
+print(mean(knn.pred == pcs.test$grp))
+```
+
+```{r}
+# Decision Trees
+set.seed(100)
+tree.fit <- tree(as.factor(grp) ~ ., data = pcs.train)
+summary(tree.fit)
+plot(tree.fit)
+text(tree.fit, pretty = 0)
+
+tree.pred <- predict(tree.fit, newdata = pcs.test, type = "class")
+tree.pred
+confusion_mat.dt = as.matrix(table(pcs.test.labs, tree.pred)) 
+print(confusion_mat.dt)
+
+print(mean(tree.pred == pcs.test$grp))
+```
+
+```{r}
+# Random Forest
+
+rf.fit <- randomForest(as.factor(grp) ~ ., data = pcs.train,, mtry = 80, importance = TRUE)
+summary(rf.fit)
+rf.pred <- predict(rf.fit, newdata = pcs.test, type = "class")
+confusion_mat.rf = as.matrix(table(pcs.test.labs, rf.pred)) 
+print(confusion_mat.rf)
+
+print(mean(rf.pred == pcs.test$grp))
+```
+
+```{r}
+manmade <- c("furniture", "clothing", "manmade", "tool", "kitchen", "vehicle", "building", "buildpart")
+natural <- c("insect", "animal", "vegetable", "bodypart")
+df_new <- within(pcs, {
+ cls <- "manmade"
+ cls[grp %in% manmade] <- "manmade"
+ cls[grp %in% natural] <- "natural"
+})
+pcs$cls <- df_new$cls
+```
+
+```{r}
+# Splitting data into training and test data
+set.seed(100) 
+#sample <- sample(1:nrow(pcs), 300)
+pcs.train <- pcs[1:300,]
+pcs.test <- pcs[301:360,]
+#pcs.train <- subset(pcs, sample == TRUE)
+#pcs.test  <- subset(pcs, sample == FALSE)
+pcs.train.x <- subset(pcs.train, select = -c(grp,cls))
+pcs.train.labs <- pcs.train$cls
+pcs.test.x <- subset(pcs.test, select = -c(grp,cls))
+pcs.test.labs <- pcs.test$cls
+```
+
+```{r}
+# Classification Algorithms
+
+# Naive Bayes Classifier
+
+nb.fit <- naiveBayes(cls ~ . , data = pcs.train)
+nb.class <- predict(nb.fit,pcs.test.x)
+nb.class
+
+confusion_mat.nb = as.matrix(table(Actual_Values = pcs.test.labs, Predicted_Values = nb.class)) 
+print(confusion_mat.nb)
+
+print(mean(nb.class == pcs.test$cls))
+```
+```{r}
+# KNN
+
+knn.pred <- knn(pcs.train.x, pcs.test.x, pcs.train.labs, k=5)
+
+confusion_mat.knn = as.matrix(table(pcs.test.labs, knn.pred)) 
+print(confusion_mat.knn)
+
+print(mean(knn.pred== pcs.test$cls))
+```
+
+```{r}
+# Decision Trees
+set.seed(100)
+tree.fit <- tree(as.factor(cls) ~ ., data = pcs.train)
+summary(tree.fit)
+plot(tree.fit)
+text(tree.fit, pretty = 0)
+
+tree.pred <- predict(tree.fit, newdata = pcs.test, type = "class")
+tree.pred
+confusion_mat.dt = as.matrix(table(pcs.test.labs, tree.pred)) 
+print(confusion_mat.dt)
+
+print(mean(tree.pred== pcs.test$cls))
+```
+
+```{r}
+# Random Forest
+
+rf.fit <- randomForest(as.factor(cls) ~ ., data = pcs.train,, mtry = 80, importance = TRUE)
+summary(rf.fit)
+rf.pred <- predict(rf.fit, newdata = pcs.test, type = "class")
+confusion_mat.rf = as.matrix(table(pcs.test.labs, rf.pred)) 
+print(confusion_mat.rf)
+
+print(mean(rf.pred== pcs.test$cls))
+```

@@ -4,6 +4,8 @@ library(caTools)
 library(e1071)
 library(class)
 library(tree)
+# library(rpart)
+# library(rpart.plot)
 library(randomForest)
 
 #Loading Data
@@ -29,16 +31,16 @@ for (i in 1:360){
 pr.out <- prcomp(voxels)
 pcs <- as.data.frame(pr.out$x)
 pcs$grp <- lab.grp$V1
-pcs$wrd <- lab.wrd$V1
+#pcs$wrd <- lab.wrd$V1
 
 # Splitting data into training and test data
-set.seed(1) 
+set.seed(100) 
 sample <- sample.split(pcs[,1], SplitRatio = .834)
 pcs.train <- subset(pcs, sample == TRUE)
 pcs.test  <- subset(pcs, sample == FALSE)
-pcs.train.x <- subset(pcs.train, select = -c(grp, wrd))
+pcs.train.x <- subset(pcs.train, select = -c(grp))
 pcs.train.labs <- pcs.train$grp
-pcs.test.x <- subset(pcs.test, select = -c(grp, wrd))
+pcs.test.x <- subset(pcs.test, select = -c(grp))
 pcs.test.labs <- pcs.test$grp
 
 # Classification Algorithms
@@ -46,21 +48,22 @@ pcs.test.labs <- pcs.test$grp
 # Naive Bayes Classifier
 
 nb.fit <- naiveBayes(grp ~ . , data = pcs.train)
-pcs.test <- as.data.frame(pr.out.test$x)
-nb.class <- predict(nb.fit,pcs.test)
+nb.class <- predict(nb.fit,pcs.test.x)
 nb.class
-
 
 confusion_mat.nb = as.matrix(table(Actual_Values = pcs.test.labs, Predicted_Values = nb.class)) 
 print(confusion_mat.nb)
 
-# KNN
+print(mean(nb.class != pcs.test$grp))
 
+# KNN
 
 knn.pred <- knn(pcs.train.x, pcs.test.x, pcs.train.labs, k=3)
 
 confusion_mat.knn = as.matrix(table(pcs.test.labs, knn.pred)) 
 print(confusion_mat.knn)
+
+print(mean(knn.pred!= pcs.test$grp))
 
 # Decision Trees
 
@@ -68,6 +71,8 @@ tree.fit <- tree(as.factor(grp) ~ ., data = pcs.train)
 summary(tree.fit)
 plot(tree.fit)
 text(tree.fit, pretty = 0)
+
+tree.pred <- predict(tree.fit, newdata = pcs.test)
 
 # Random Forest
 
