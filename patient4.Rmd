@@ -1,5 +1,5 @@
 ---
-title: "Patient2"
+title: "Patient4"
 author: "Anuhya B S"
 date: '2022-06-08'
 output:
@@ -23,7 +23,7 @@ library(randomForest)
 
 ```{r}
 #Loading Data
-p1 <- readMat("data-science-P2.mat")
+p1 <- readMat("data-science-P4.mat")
 
 info <- as.data.frame(p1[2])
 info <- t(info)
